@@ -29,7 +29,7 @@ func (b Bit) Not() Bit {
 	}
 }
 
-func (b Bit) And(b2 Bit) Bit {
+func And(b, b2 Bit) Bit {
 	switch {
 	case b == O || b2 == O:
 		return O
@@ -40,7 +40,7 @@ func (b Bit) And(b2 Bit) Bit {
 	}
 }
 
-func (b Bit) Or(b2 Bit) Bit {
+func Or(b, b2 Bit) Bit {
 	switch {
 	case b == I || b2 == I:
 		return I

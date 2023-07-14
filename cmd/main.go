@@ -5,42 +5,49 @@ import (
 	"fmt"
 	. "goos/bit"
 	d "goos/digital"
-	"goos/digital/gate"
 	"strings"
 	"time"
 )
 
+var D = 1 * time.Second
+
 func main() {
 	ctx := context.Background()
 
-	w1 := newWire(ctx, "w1")
-	w2 := newWire(ctx, "w2")
-	w3 := newWire(ctx, "w3")
-	w4 := newWire(ctx, "w4")
+	signals := [][]Bit{
+		{O, O, O},
+		{O, O, I},
+		{O, I, O},
+		{O, I, I},
+		{I, O, O},
+		{I, O, I},
+		{I, I, O},
+		{I, I, I}}
 
-	signals := [][]Bit{{O, O}, {O, I}, {I, O}, {I, I}}
+	S := d.NewDupWire(ctx, "s", D)
+	A := d.NewWire(ctx, "a", D)
+	B := d.NewWire(ctx, "b", D)
+	O := d.NewWire(ctx, "out", D)
 
 	go func() {
-		for _, pair := range signals {
-			b1, b2 := pair[0], pair[1]
-			w1.In <- b1
-			w2.In <- b2
+		for _, t := range signals {
+			s, a, b := t[0], t[1], t[2]
+			fmt.Println("--------------------")
+			S.In <- s
+			A.In <- a
+			B.In <- b
 		}
-		close(w1.In)
-		close(w2.In)
+		close(S.In)
+		close(A.In)
+		close(B.In)
 	}()
 
-	and := gate.AndGate(ctx, w1, w2, w3)
-	not := gate.NotGate(ctx, and.Out, w4)
+	mux := d.NewMux(ctx, &S, &A, &B, &O)
 
 	var output []string
-	for b := range not.Out.Out {
+	for b := range mux.Out.Out {
 		output = append(output, b.String())
 	}
 
 	fmt.Printf("output = %s\n", strings.Join(output, ""))
-}
-
-func newWire(ctx context.Context, name string) d.Wire {
-	return d.NewWire(ctx, name, 1*time.Second)
 }

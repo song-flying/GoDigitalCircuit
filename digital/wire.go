@@ -43,6 +43,47 @@ func NewWire(ctx context.Context, name string, duration time.Duration) Wire {
 	return w
 }
 
+type DupWire struct {
+	name  string
+	In    chan b.Bit
+	Wire1 Wire
+	Wire2 Wire
+}
+
+func NewDupWire(ctx context.Context, name string, duration time.Duration) DupWire {
+	w := DupWire{
+		name:  name,
+		In:    make(chan b.Bit),
+		Wire1: NewWire(ctx, name, duration),
+		Wire2: NewWire(ctx, name, duration),
+	}
+
+	go func() {
+		for {
+			select {
+			case b, ok := <-w.In:
+				if !ok {
+					w.Wire1.Close()
+					w.Wire2.Close()
+					return
+				}
+				fmt.Printf("%s <-- %s\n", w.name, b)
+				if duration != 0 {
+					time.Sleep(duration)
+				}
+				w.Wire1.In <- b
+				w.Wire2.In <- b
+			case <-ctx.Done():
+				w.Wire1.Close()
+				w.Wire2.Close()
+				return
+			}
+		}
+	}()
+
+	return w
+}
+
 func (w *Wire) Close() {
 	close(w.In)
 }

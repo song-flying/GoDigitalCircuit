@@ -1,17 +1,17 @@
-package gate
+package digital
 
 import (
 	"context"
-	. "goos/digital"
+	b "goos/bit"
 )
 
-type Not struct {
-	in  Wire
-	Out Wire
+type UnaryGate struct {
+	in  *Wire
+	Out *Wire
 }
 
-func NotGate(ctx context.Context, in Wire, out Wire) *Not {
-	gate := Not{
+func NotGate(ctx context.Context, in *Wire, out *Wire) UnaryGate {
+	gate := UnaryGate{
 		in:  in,
 		Out: out,
 	}
@@ -31,17 +31,17 @@ func NotGate(ctx context.Context, in Wire, out Wire) *Not {
 		}
 	}()
 
-	return &gate
+	return gate
 }
 
-type And struct {
-	inA Wire
-	inB Wire
-	Out Wire
+type BinaryGate struct {
+	inA *Wire
+	inB *Wire
+	Out *Wire
 }
 
-func AndGate(ctx context.Context, inA, inB, out Wire) *And {
-	gate := And{
+func binaryGate(ctx context.Context, inA, inB, out *Wire, f func(b.Bit, b.Bit) b.Bit) BinaryGate {
+	gate := BinaryGate{
 		inA: inA,
 		inB: inB,
 		Out: out,
@@ -62,7 +62,7 @@ func AndGate(ctx context.Context, inA, inB, out Wire) *And {
 				case <-ctx.Done():
 					return
 				case b := <-gate.inB.Out:
-					gate.Out.In <- a.And(b)
+					gate.Out.In <- f(a, b)
 				}
 			case b, ok := <-gate.inB.Out:
 				if !ok {
@@ -73,11 +73,19 @@ func AndGate(ctx context.Context, inA, inB, out Wire) *And {
 				case <-ctx.Done():
 					return
 				case a := <-gate.inA.Out:
-					gate.Out.In <- a.And(b)
+					gate.Out.In <- f(a, b)
 				}
 			}
 		}
 	}()
 
-	return &gate
+	return gate
+}
+
+func AndGate(ctx context.Context, inA, inB, out *Wire) BinaryGate {
+	return binaryGate(ctx, inA, inB, out, b.And)
+}
+
+func OrGate(ctx context.Context, inA, inB, out *Wire) BinaryGate {
+	return binaryGate(ctx, inA, inB, out, b.Or)
 }
