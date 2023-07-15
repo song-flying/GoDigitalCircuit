@@ -1,2 +1,2 @@
-# GoOperatingSystem
-digital circuit and OS in Go
+# GoDigitalCircuit
+digital circuit simulation in Go
