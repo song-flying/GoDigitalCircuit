@@ -43,6 +43,10 @@ func NewWire(ctx context.Context, name string, duration time.Duration) Wire {
 	return w
 }
 
+func (w *Wire) Close() {
+	close(w.In)
+}
+
 type DupWire struct {
 	name  string
 	In    chan b.Bit
@@ -84,6 +88,6 @@ func NewDupWire(ctx context.Context, name string, duration time.Duration) DupWir
 	return w
 }
 
-func (w *Wire) Close() {
-	close(w.In)
+func (dw *DupWire) Close() {
+	close(dw.In)
 }

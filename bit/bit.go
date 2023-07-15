@@ -50,3 +50,7 @@ func Or(b, b2 Bit) Bit {
 		panic("invalid bits")
 	}
 }
+
+func Nor(b, b2 Bit) Bit {
+	return Or(b, b2).Not()
+}
