@@ -54,3 +54,11 @@ func Or(b, b2 Bit) Bit {
 func Nor(b, b2 Bit) Bit {
 	return Or(b, b2).Not()
 }
+
+func BitSliceToStringSlice(bits []Bit) []string {
+	var bitStrings []string
+	for _, b := range bits {
+		bitStrings = append(bitStrings, b.String())
+	}
+	return bitStrings
+}

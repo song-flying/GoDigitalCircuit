@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	. "goos/bit"
+	"goos/bit"
 	d "goos/digital"
 	"strings"
 	"time"
@@ -12,21 +12,21 @@ import (
 var D = 1 * time.Second
 
 func main() {
-	fmt.Println("----------Test Mux----------")
-	testMux()
-	fmt.Println("----------Test SRLatch----------")
+	//fmt.Println("--------------- Test Mux ---------------")
+	//testMux()
+	fmt.Println("--------------- Test SRLatch ---------------")
 	testSRLatch()
 }
 
 func testSRLatch() {
 	ctx := context.Background()
 
-	R := d.NewWire(ctx, "r", D)
-	S := d.NewWire(ctx, "s", D)
-	Q := d.NewDupWire(ctx, "q", D)
-	Q_ := d.NewDupWire(ctx, "-q", D)
+	R := d.NewWire(ctx, "r")
+	S := d.NewWire(ctx, "s")
+	Q := d.NewDupWire(ctx, "q")
+	Q_ := d.NewDupWire(ctx, "-q")
 
-	signals := [][]Bit{
+	values := [][]bit.Bit{
 		{0, 0},
 		{0, 1},
 		{0, 1},
@@ -35,14 +35,14 @@ func testSRLatch() {
 		{1, 0},
 		{0, 0},
 	}
+	signalCh := make(chan []bit.Bit)
+	source := d.NewSource(ctx, signalCh, []chan bit.Bit{R.In, S.In})
 	go func() {
-		for _, t := range signals {
-			r, s := t[0], t[1]
-			R.In <- r
-			S.In <- s
+		for _, v := range values {
+			source.C <- v
+			time.Sleep(2 * time.Second)
 		}
-		close(R.In)
-		close(S.In)
+		close(source.C)
 	}()
 
 	latch := d.NewSRLatch(ctx, &R, &S, &Q, &Q_)
@@ -54,48 +54,48 @@ func testSRLatch() {
 		if !ok1 || !ok2 {
 			break
 		}
-		output = append(output, fmt.Sprintf("(%s,%s)", q, q_))
+		output = append(output, fmt.Sprintf("%s%s", q, q_))
+		fmt.Printf("\routput = %s", strings.Join(output, "|"))
 	}
-
-	fmt.Printf("output = %s\n", strings.Join(output, ""))
+	fmt.Println()
 }
 
 func testMux() {
 	ctx := context.Background()
 
-	signals := [][]Bit{
-		{O, O, O},
-		{O, O, I},
-		{O, I, O},
-		{O, I, I},
-		{I, O, O},
-		{I, O, I},
-		{I, I, O},
-		{I, I, I}}
+	signals := [][]bit.Bit{
+		{0, 0, 0},
+		{0, 0, 1},
+		{0, 1, 0},
+		{0, 1, 1},
+		{1, 0, 0},
+		{1, 0, 1},
+		{1, 1, 0},
+		{1, 1, 1}}
 
-	S := d.NewDupWire(ctx, "s", D)
-	A := d.NewWire(ctx, "a", D)
-	B := d.NewWire(ctx, "b", D)
-	O := d.NewWire(ctx, "out", D)
+	S := d.NewDupWire(ctx, "s")
+	A := d.NewWire(ctx, "a")
+	B := d.NewWire(ctx, "b")
+	O := d.NewWire(ctx, "out")
+
+	signalCh := make(chan []bit.Bit)
+	source := d.NewSource(ctx, signalCh, []chan bit.Bit{S.In, A.In, B.In})
 
 	go func() {
-		for _, t := range signals {
-			s, a, b := t[0], t[1], t[2]
-			S.In <- s
-			A.In <- a
-			B.In <- b
+		for _, v := range signals {
+			source.C <- v
+			time.Sleep(2 * time.Second)
 		}
-		close(S.In)
-		close(A.In)
-		close(B.In)
+		close(source.C)
 	}()
 
 	mux := d.NewMux(ctx, &S, &A, &B, &O)
 
 	var output []string
 	for b := range mux.Out.Out {
-		output = append(output, b.String())
+		output = append(output, fmt.Sprintf("%3s", b.String()))
+		fmt.Printf("\routput = %s", strings.Join(output, "|"))
 	}
 
-	fmt.Printf("output = %s\n", strings.Join(output, ""))
+	fmt.Println()
 }
