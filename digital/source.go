@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"goos/bit"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -54,7 +53,7 @@ func NewSource(ctx context.Context, valueSource chan []bit.Bit, inputs []chan bi
 					output = append(
 						output,
 						strings.Join(bit.BitSliceToStringSlice(source.values), ""))
-					fmt.Fprintf(os.Stderr, "\rvalues = %s", strings.Join(output, "|"))
+					//fmt.Fprintf(os.Stderr, "\rvalues = %s", strings.Join(output, "|"))
 					source.sendInput()
 				}
 			}
