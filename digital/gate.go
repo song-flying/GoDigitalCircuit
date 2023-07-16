@@ -7,10 +7,10 @@ import (
 
 type UnaryGate struct {
 	in  *Wire
-	Out *Wire
+	Out InWire
 }
 
-func NotGate(ctx context.Context, in *Wire, out *Wire) UnaryGate {
+func NotGate(ctx context.Context, in *Wire, out InWire) UnaryGate {
 	gate := UnaryGate{
 		in:  in,
 		Out: out,
@@ -26,7 +26,7 @@ func NotGate(ctx context.Context, in *Wire, out *Wire) UnaryGate {
 					gate.Out.Close()
 					return
 				}
-				gate.Out.In <- b.Not()
+				gate.Out.In() <- b.Not()
 			}
 		}
 	}()
@@ -37,10 +37,10 @@ func NotGate(ctx context.Context, in *Wire, out *Wire) UnaryGate {
 type BinaryGate struct {
 	inA *Wire
 	inB *Wire
-	Out *Wire
+	Out InWire
 }
 
-func binaryGate(ctx context.Context, inA, inB, out *Wire, f func(b.Bit, b.Bit) b.Bit) BinaryGate {
+func binaryGate(ctx context.Context, inA, inB *Wire, out InWire, f func(b.Bit, b.Bit) b.Bit) BinaryGate {
 	gate := BinaryGate{
 		inA: inA,
 		inB: inB,
@@ -62,7 +62,7 @@ func binaryGate(ctx context.Context, inA, inB, out *Wire, f func(b.Bit, b.Bit) b
 				case <-ctx.Done():
 					return
 				case b := <-gate.inB.Out:
-					gate.Out.In <- f(a, b)
+					gate.Out.In() <- f(a, b)
 				}
 			case b, ok := <-gate.inB.Out:
 				if !ok {
@@ -73,7 +73,7 @@ func binaryGate(ctx context.Context, inA, inB, out *Wire, f func(b.Bit, b.Bit) b
 				case <-ctx.Done():
 					return
 				case a := <-gate.inA.Out:
-					gate.Out.In <- f(a, b)
+					gate.Out.In() <- f(a, b)
 				}
 			}
 		}
@@ -90,54 +90,6 @@ func OrGate(ctx context.Context, inA, inB, out *Wire) BinaryGate {
 	return binaryGate(ctx, inA, inB, out, b.Or)
 }
 
-type BinaryDupGate struct {
-	inA *Wire
-	inB *Wire
-	Out *DupWire
-}
-
-func binaryDupGate(ctx context.Context, inA, inB *Wire, out *DupWire, f func(b.Bit, b.Bit) b.Bit) BinaryDupGate {
-	gate := BinaryDupGate{
-		inA: inA,
-		inB: inB,
-		Out: out,
-	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				gate.Out.Close()
-				return
-			case a, ok := <-gate.inA.Out:
-				if !ok {
-					gate.Out.Close()
-					return
-				}
-				select {
-				case <-ctx.Done():
-					return
-				case b := <-gate.inB.Out:
-					gate.Out.In <- f(a, b)
-				}
-			case b, ok := <-gate.inB.Out:
-				if !ok {
-					gate.Out.Close()
-					return
-				}
-				select {
-				case <-ctx.Done():
-					return
-				case a := <-gate.inA.Out:
-					gate.Out.In <- f(a, b)
-				}
-			}
-		}
-	}()
-
-	return gate
-}
-
-func NORGate(ctx context.Context, inA, inB *Wire, out *DupWire) BinaryDupGate {
-	return binaryDupGate(ctx, inA, inB, out, b.Nor)
+func NORGate(ctx context.Context, inA, inB *Wire, out InWire) BinaryGate {
+	return binaryGate(ctx, inA, inB, out, b.Nor)
 }

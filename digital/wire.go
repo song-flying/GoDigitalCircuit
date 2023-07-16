@@ -6,16 +6,21 @@ import (
 	b "goos/bit"
 )
 
+type InWire interface {
+	In() chan b.Bit
+	Close()
+}
+
 type Wire struct {
 	Name string
-	In   chan b.Bit
+	in   chan b.Bit
 	Out  chan b.Bit
 }
 
 func NewWire(ctx context.Context, name string) Wire {
 	w := Wire{
 		Name: name,
-		In:   make(chan b.Bit, 1),
+		in:   make(chan b.Bit, 1),
 		Out:  make(chan b.Bit),
 	}
 
@@ -25,7 +30,7 @@ func NewWire(ctx context.Context, name string) Wire {
 			case <-ctx.Done():
 				close(w.Out)
 				return
-			case b, ok := <-w.In:
+			case b, ok := <-w.in:
 				if !ok {
 					close(w.Out)
 					return
@@ -39,67 +44,30 @@ func NewWire(ctx context.Context, name string) Wire {
 	return w
 }
 
+func (w *Wire) In() chan b.Bit {
+	return w.in
+}
+
 func (w *Wire) Close() {
-	close(w.In)
-}
-
-type DupWire struct {
-	name  string
-	In    chan b.Bit
-	Wire1 Wire
-	Wire2 Wire
-}
-
-func NewDupWire(ctx context.Context, name string) DupWire {
-	w := DupWire{
-		name:  name,
-		In:    make(chan b.Bit, 1),
-		Wire1: NewWire(ctx, name),
-		Wire2: NewWire(ctx, name),
-	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				w.Wire1.Close()
-				w.Wire2.Close()
-				return
-			case b, ok := <-w.In:
-				if !ok {
-					w.Wire1.Close()
-					w.Wire2.Close()
-					return
-				}
-				w.Wire1.In <- b
-				w.Wire2.In <- b
-			}
-		}
-	}()
-
-	return w
-}
-
-func (dw *DupWire) Close() {
-	close(dw.In)
+	close(w.in)
 }
 
 type MultiWire struct {
 	Name  string
-	In    chan b.Bit
+	in    chan b.Bit
 	Wires []Wire
 }
 
-func NewMultiWire(ctx context.Context, name string, size int) MultiWire {
-	newName := fmt.Sprintf("%s_%d", name, size)
+func NewMultiWire(ctx context.Context, name string, numCopies int) MultiWire {
+	newName := fmt.Sprintf("%s_%d", name, numCopies)
 	var wires []Wire
-	for i := 0; i < size; i++ {
+	for i := 0; i < numCopies; i++ {
 		wires = append(wires, NewWire(ctx, fmt.Sprintf("%s_%d", newName, i)))
 	}
 
 	mw := MultiWire{
 		Name:  newName,
-		In:    make(chan b.Bit, 1),
+		in:    make(chan b.Bit, 1),
 		Wires: wires,
 	}
 
@@ -111,7 +79,7 @@ func NewMultiWire(ctx context.Context, name string, size int) MultiWire {
 					wire.Close()
 				}
 				return
-			case b, ok := <-mw.In:
+			case b, ok := <-mw.in:
 				if !ok {
 					for _, wire := range mw.Wires {
 						wire.Close()
@@ -130,16 +98,20 @@ func NewMultiWire(ctx context.Context, name string, size int) MultiWire {
 func (mw *MultiWire) sendToAll(b b.Bit) {
 	for _, w := range mw.Wires {
 		//fmt.Printf("sub wire %s got %s\n", w.Name, b)
-		w.In <- b
+		w.In() <- b
 	}
 }
 
-func (mw *MultiWire) Close() {
-	close(mw.In)
+func (mw *MultiWire) In() chan b.Bit {
+	return mw.in
 }
 
-func (w *Wire) FanOut(ctx context.Context, size int) MultiWire {
-	mw := NewMultiWire(ctx, w.Name, size)
+func (mw *MultiWire) Close() {
+	close(mw.in)
+}
+
+func (w *Wire) FanOut(ctx context.Context, numCopies int) MultiWire {
+	mw := NewMultiWire(ctx, w.Name, numCopies)
 
 	go func() {
 		for {
@@ -153,7 +125,7 @@ func (w *Wire) FanOut(ctx context.Context, size int) MultiWire {
 					return
 				}
 				//fmt.Printf("upper wire %s got %s\n", w.Name, b)
-				mw.In <- b
+				mw.In() <- b
 			}
 		}
 	}()
