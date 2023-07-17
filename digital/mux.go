@@ -11,23 +11,23 @@ type Mux struct {
 	Out *Wire
 }
 
-func NewMux(ctx context.Context, s *MultiWire, a, b, o *Wire) *Mux {
-	ns := NewWire(ctx, "~s")
-	NotGate(ctx, &s.Wires[0], &ns)
+func NewMux(ctx context.Context, S *MultiWire, A, B, O *Wire) *Mux {
+	ns := NewWire(ctx, "~S")
+	NotGate(ctx, &S.Wires[0], &ns)
 
-	ns_and_b := NewWire(ctx, "~s&b")
-	AndGate(ctx, &ns, b, &ns_and_b)
+	ns_and_b := NewWire(ctx, "~S&B")
+	AndGate(ctx, &ns, B, &ns_and_b)
 
-	s_and_a := NewWire(ctx, "s&a")
-	AndGate(ctx, &s.Wires[1], a, &s_and_a)
+	s_and_a := NewWire(ctx, "S&A")
+	AndGate(ctx, &S.Wires[1], A, &s_and_a)
 
-	out := NewWire(ctx, "~s&b|s&a")
+	out := NewWire(ctx, "~S&B|S&A")
 	OrGate(ctx, &ns_and_b, &s_and_a, &out)
 
 	mux := Mux{
-		InS: s,
-		InA: a,
-		InB: b,
+		InS: S,
+		InA: A,
+		InB: B,
 		Out: &out,
 	}
 

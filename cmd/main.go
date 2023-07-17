@@ -18,8 +18,10 @@ func main() {
 	//testSRLatch()
 	//fmt.Println("--------------- Test DLatch ---------------")
 	//testDLatch()
-	fmt.Println("--------------- Test FlipFlop ---------------")
-	testFlipFlop()
+	//fmt.Println("--------------- Test FlipFlop ---------------")
+	//testFlipFlop()
+	fmt.Println("--------------- Test TrafficLight ---------------")
+	testTrafficLight()
 }
 
 func testMux() {
@@ -216,16 +218,62 @@ func testFlipFlop() {
 		close(source.C)
 	}()
 
-	d := d.NewFlipFlop(ctx, &C, &D, &Q, &Q_)
+	ff := d.NewFlipFlop(ctx, &C, &D, &Q, &Q_)
 
 	var output []string
 	for {
-		q, ok1 := <-d.Q.Out
-		q_, ok2 := <-d.Q_.Out
+		q, ok1 := <-ff.Q.Out
+		q_, ok2 := <-ff.Q_.Out
 		if !ok1 || !ok2 {
 			break
 		}
 		output = append(output, fmt.Sprintf("%s%s", q, q_))
+		//fmt.Printf("\routput = %s", strings.Join(output, "|"))
+		fmt.Printf("output = %s\n", strings.Join(output, "|"))
+	}
+	fmt.Println()
+}
+
+func testTrafficLight() {
+	ctx := context.Background()
+
+	C := d.NewWire(ctx, "C")
+	EWCar := d.NewWire(ctx, "EWCar")
+	NSCar := d.NewWire(ctx, "NSCar")
+	EWLight := d.NewWire(ctx, "EWLight")
+	NSLight := d.NewWire(ctx, "NSLight")
+
+	values := [][]bit.Bit{
+		{0, 0, 0},
+		{1, 0, 0},
+		{0, 0, 1},
+		{1, 0, 1},
+		{0, 1, 0},
+		{1, 1, 0},
+		{0, 1, 1},
+		{1, 1, 1},
+		{0, 0, 0},
+	}
+	signalCh := make(chan []bit.Bit)
+	source := d.NewSource(ctx, signalCh, []chan bit.Bit{C.In(), EWCar.In(), NSCar.In()})
+	go func() {
+		for _, v := range values {
+			source.C <- v
+			time.Sleep(3 * time.Second)
+		}
+		close(source.C)
+	}()
+
+	tl := d.NewTrafficLight(ctx, &C, &EWCar, &NSCar, &EWLight, &NSLight)
+
+	var output []string
+	for {
+		ew, ok1 := <-tl.EWLight.Out
+		ns, ok2 := <-tl.NSLight.Out
+		if !ok1 || !ok2 {
+			break
+		}
+		output = append(output, fmt.Sprintf(" %s%s", ew, ns))
 		//fmt.Printf("\routput = %s", strings.Join(output, "|"))
 		fmt.Printf("output = %s\n", strings.Join(output, "|"))
 	}

@@ -10,19 +10,19 @@ type SRLatch struct {
 	Q, Q_ *Wire
 }
 
-func NewSRLatch(ctx context.Context, r, s *Wire, q, q_ *MultiWire) SRLatch {
-	NORGate(ctx, r, &q_.Wires[1], q)
-	NORGate(ctx, s, &q.Wires[1], q_)
+func NewSRLatch(ctx context.Context, R, S *Wire, Q, Q_ *MultiWire) SRLatch {
+	NorGate(ctx, R, &Q_.Wires[1], Q)
+	NorGate(ctx, S, &Q.Wires[1], Q_)
 
 	// bootstrap
-	q.Wires[1].In() <- bit.O
-	q_.Wires[1].In() <- bit.I
+	Q.Wires[1].In() <- bit.O
+	Q_.Wires[1].In() <- bit.I
 
 	return SRLatch{
-		R:  r,
-		S:  s,
-		Q:  &q.Wires[0],
-		Q_: &q_.Wires[0],
+		R:  R,
+		S:  S,
+		Q:  &Q.Wires[0],
+		Q_: &Q_.Wires[0],
 	}
 }
 

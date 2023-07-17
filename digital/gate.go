@@ -10,6 +10,30 @@ type UnaryGate struct {
 	Out InWire
 }
 
+func IDGate(ctx context.Context, in *Wire, out InWire) UnaryGate {
+	gate := UnaryGate{
+		in:  in,
+		Out: out,
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case b, ok := <-gate.in.Out:
+				if !ok {
+					gate.Out.Close()
+					return
+				}
+				gate.Out.In() <- b
+			}
+		}
+	}()
+
+	return gate
+}
+
 func NotGate(ctx context.Context, in *Wire, out InWire) UnaryGate {
 	gate := UnaryGate{
 		in:  in,
@@ -90,6 +114,6 @@ func OrGate(ctx context.Context, inA, inB, out *Wire) BinaryGate {
 	return binaryGate(ctx, inA, inB, out, b.Or)
 }
 
-func NORGate(ctx context.Context, inA, inB *Wire, out InWire) BinaryGate {
+func NorGate(ctx context.Context, inA, inB *Wire, out InWire) BinaryGate {
 	return binaryGate(ctx, inA, inB, out, b.Nor)
 }
